@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -19,7 +19,7 @@ namespace SudoFont
 		public MainForm()
 		{
 			InitializeComponent();
-			
+
 			_fontPreview.BackColor = Color.Black;
 			_outputPreview.BackColor = Color.Black;
 			ResetCharacterSet();	// Setup a default character set.
@@ -47,7 +47,7 @@ namespace SudoFont
 			_sizeCombo.Items.Add( 48 );
 			_sizeCombo.Items.Add( 60 );
 			_sizeCombo.Items.Add( 72 );
-			
+
 			_hintCombo.Items.Add( "ClearTypeGridFit" );
 			_hintCombo.Items.Add( "SystemDefault" );
 			_hintCombo.Items.Add( "SingleBitPerPixelGridFit" );
@@ -98,7 +98,7 @@ namespace SudoFont
 			UpdateColorDisplays();
 			Recalculate();
 
-			_previewTextEntry.Text = _currentPreviewText;	
+			_previewTextEntry.Text = _currentPreviewText;
 		}
 
 		string CurrentSelectedFontFamilyName
@@ -146,7 +146,7 @@ namespace SudoFont
 				if ( ctl.Control.Checked && family.IsStyleAvailable( style & ctl.Style ) )
 					style |= ctl.Style;
 			}
-			
+
 			// If we still haven't arrived at a valid style, then let's just set any style this font will support.
 			if ( !family.IsStyleAvailable( style ) )
 			{
@@ -201,7 +201,7 @@ namespace SudoFont
 				_outputImageSizeLabel.Text = "( error )";
 			}
 
-			// Rebuild the font preview 
+			// Rebuild the font preview
 			BuildFontPreviewBitmap();
 			_fontPreview.Invalidate();
 		}
@@ -273,7 +273,7 @@ namespace SudoFont
 
 			Brush whiteBrush = new SolidBrush( Color.White );
 			Brush blackBrush = new SolidBrush( Color.Black );
-			
+
 			// Get all the bitmap data and extents for the characters.
 			using ( Bitmap tempBitmap = new Bitmap( 512, 512, PixelFormat.Format32bppArgb ) )
 			{
@@ -334,7 +334,7 @@ namespace SudoFont
 			while ( packedWidth < maxImageDimension )
 			{
 				// We started out with a tiny width, so the height was super likely to be larger than the width.
-				// If we finally get it where the width and height are equal, or where width is just one power of 
+				// If we finally get it where the width and height are equal, or where width is just one power of
 				// two larger, then we're happy.
 				packedHeight = PackCharacters( sorted, packedWidth, atomicPixels );
 				if ( NextPowerOfTwo( packedWidth ) >= packedHeight )
@@ -371,7 +371,7 @@ namespace SudoFont
 			}
 
 			BitmapData bm = bitmap.LockBits( new Rectangle( 0, 0, bitmap.Width, bitmap.Height ), ImageLockMode.WriteOnly, bitmap.PixelFormat );
-			
+
 			foreach ( CharacterInfo c in infos )
 				CopyImageData( c.Image, c.PackedWidth, c.PackedHeight, bm, c.PackedX, c.PackedY, alphaOnly, c.YOffset );
 
@@ -392,7 +392,7 @@ namespace SudoFont
 					// Figure out shading.
 					int shadingY = ( y + shadingYOffset - _gradientTopOffset );
 					int shadingR, shadingG, shadingB;
-					
+
 					if ( shadingY <= 0 )
 					{
 						shadingR = _topColor.R;
@@ -423,7 +423,7 @@ namespace SudoFont
 							continue;
 
 						UInt32 color = imageData[ y * imageWidth + x ];
-						
+
 						if ( alphaOnly )
 						{
 							// We have to guess at an alpha value here. We'll do that based on R, G, and B.
@@ -480,7 +480,7 @@ namespace SudoFont
 
 						lineWidth += extraPadX;
 					}
-					
+
 					lineWidth += thisCharWidth;
 				}
 
@@ -505,7 +505,7 @@ namespace SudoFont
 				firstChar += numCharsInLine;
 				curY = AdjustForAtomicPixels( curY + maxHeight + extraPadY, atomicPixels );
 			}
-			
+
 			return curY;
 		}
 
@@ -520,7 +520,7 @@ namespace SudoFont
 		static int NextPowerOfTwo( int i )
 		{
 			int ret = 1;
-			
+
 			while ( ret < i )
 				ret <<= 1;
 
@@ -542,7 +542,7 @@ namespace SudoFont
 					maxY = Math.Max( y, maxY );
 				}
 			}
-			
+
 			// Scan for X extents.
 			int minX = int.MaxValue;
 			int maxX = int.MinValue;
@@ -684,7 +684,7 @@ namespace SudoFont
 				ctl.Control.Enabled = family.IsStyleAvailable( ctl.Style );
 				ctl.Control.Checked &= ctl.Control.Enabled;	// Restrict the current settings to what's available.
 			}
-			
+
 			Recalculate();
 			MarkDirty();
 		}
@@ -880,7 +880,7 @@ namespace SudoFont
 
 					_alphaOnlyControl.Checked = Convert.ToBoolean( GetOption( options, ConfigFileKey_AlphaOnly ) );
 					_embedConfigurationOption.Checked = Convert.ToBoolean( GetOption( options, ConfigFileKey_EmbedConfigInFontFile ) );
-					
+
 					// Set the hint text..
 					string hintText = "";
 					int fontSystem = 0;
@@ -918,7 +918,7 @@ namespace SudoFont
 
 					CurrentSelectedFontFamilyName = GetOption( options, ConfigFileKey_FontFamily );
 					CurrentComboBoxFontSize = Convert.ToInt32( GetOption( options, ConfigFileKey_FontSize ) );
-					
+
 					this.GradientTopOffsetControlValue = _gradientTopOffset = gradientTopOffset;
 					this.GradientBottomOffsetControlValue = _gradientBottomOffset = gradientBottomOffset;
 				}
@@ -993,7 +993,7 @@ namespace SudoFont
 
 			WriteOption( writer, ConfigFileKey_AlphaOnly, _alphaOnlyControl.Checked );
 			WriteOption( writer, ConfigFileKey_EmbedConfigInFontFile, _embedConfigurationOption.Checked );
-			
+
 			WriteOption( writer, ConfigFileKey_TopColorR, _topColor.R );
 			WriteOption( writer, ConfigFileKey_TopColorG, _topColor.G );
 			WriteOption( writer, ConfigFileKey_TopColorB, _topColor.B );
@@ -1054,7 +1054,7 @@ namespace SudoFont
 					WriteFontFileDataToStream( writer, _packedImage.Width, _packedImage.Height );
 				}
 			}
-			
+
 			string textureFilename;
 			if ( _handleSpecialSuffix.Checked )
 			{
@@ -1080,7 +1080,7 @@ namespace SudoFont
 			_packedImage.Save( textureFilename );
 
 			ClearDirtyFlag();
-			
+
 			// Useful for verifying the saving, loading, and rendering/spacing.
 			//SetTestBitmap( SudoFontTest.CreateBitmapFromString( _prevFontFilename, "This is a test string. !@#$%^&*", 0, 0, _currentFont, win32APITest: true ) );
 		}
@@ -1127,7 +1127,7 @@ namespace SudoFont
 		// This is how we calculate XAdvance and find kerning. Normally, we'd use GetCharABCWidths and GetKerningPairs,
 		// but we weren't able to get the spacing to match Graphics.DrawString properly using that data.
 		//
-		// This method is inefficient, but it's highly accurate because it deduces the correct spacing information 
+		// This method is inefficient, but it's highly accurate because it deduces the correct spacing information
 		// directly from GraphicsMeasureCharacterRanges.
 		//
 		// It also happens to generate a lot less kerning pairs than GetKerningPairs does (even after reducing down to
@@ -1147,13 +1147,13 @@ namespace SudoFont
 				int dist = (int)( xCoords[2] - xCoords[1] );
 				minDist = Math.Min( dist, minDist );
 				maxDist = Math.Max( dist, maxDist );
-				
+
 				distances[i] = dist;
 				averageDist += dist;
 			}
 
-			// By setting XAdvance to the (rounded) average distance to the other characters, we're intending to 
-			// reduce the # of kerning pairs necessary. This tends to work well, usually returning 1 kerning pair 
+			// By setting XAdvance to the (rounded) average distance to the other characters, we're intending to
+			// reduce the # of kerning pairs necessary. This tends to work well, usually returning 1 kerning pair
 			// for most characters (that have kerning at all) in a font.
 			averageDist = (int)( (float)averageDist / _finalCharacterSet.Length + 0.5f );
 			c.XAdvance = averageDist;
@@ -1263,12 +1263,12 @@ namespace SudoFont
 				writer.Write( bytes );
 			}
 		}
-		
+
 
 		int CountKerningsWithFirstChar( FontServices.KerningPair[] kerningPairs, Char ch )
 		{
 			int total = 0;
-			
+
 			for ( int i=0; i < kerningPairs.Length; i++ )
 			{
 				if ( kerningPairs[i].wFirst == (Int16)ch )
@@ -1296,7 +1296,7 @@ namespace SudoFont
 				FontFile_Save();
 			}
 		}
-		
+
 		private void hintCombo_SelectedIndexChanged( object sender, EventArgs e )
 		{
 			Recalculate();
@@ -1307,7 +1307,7 @@ namespace SudoFont
 		class CharacterInfo
 		{
 			public Char Character;
-			
+
 			// If you print the character into a Graphics at (0,0), this will be where the actual nonzero data is.
 			public int XOffset;
 			public int YOffset;
@@ -1321,7 +1321,7 @@ namespace SudoFont
 			// How far to advance on X when printing this char.
 			// The total amount to advance for each char is (XAdvance + Font.SpacingHorz + Kerning( thisChar, nextChar )).
 			public int XAdvance;
-			
+
 			// This is the original image data after Graphics.DrawString.
 			// Dimensions are Width x Height.
 			public UInt32[] Image;
@@ -1362,7 +1362,7 @@ namespace SudoFont
 			public void Dispose()
 			{
 				_writer.Flush();
-				
+
 				long numSectionBytes = _writer.BaseStream.Position - _sectionStartPosition - sizeof( int );
 				Debug.Assert( numSectionBytes > 0 );
 
@@ -1420,7 +1420,7 @@ namespace SudoFont
 					if ( c.Character == ch )
 						return c;
 				}
-				
+
 				return null;
 			}
 
@@ -1557,7 +1557,7 @@ namespace SudoFont
 					_alphaPreviewForm = new PerPixelAlphaForm();
 					_alphaPreviewForm.ShowInTaskbar = false;
 				}
-			
+
 				_alphaPreviewForm.SetBitmap( _fontPreviewBitmap );
 				_alphaPreviewForm.Show();
 
@@ -1607,7 +1607,7 @@ namespace SudoFont
 		void ResetTopAndBottomGradientOffsets()
 		{
 			this.GradientTopOffsetControlValue = _gradientTopOffset = 0;
-			
+
 			using ( Graphics g = this.CreateGraphics() )
 			{
 				FontStyle style = GetFontStyleForFamily( _currentFont.FontFamily );
@@ -1666,7 +1666,7 @@ namespace SudoFont
 			_dirty = false;
 			UpdateTitleText();
 		}
-		
+
 		void UpdateTitleText()
 		{
 			string title = "Sudo Font";
@@ -1694,9 +1694,9 @@ namespace SudoFont
 			Recalculate();
 		}
 
-		
+
 		bool _dirty = false;
-			
+
 
 		// Config file keys.
 		static readonly string ConfigFilenameHeader = "SudoFont Font Configuration File v1.0";
@@ -1717,7 +1717,7 @@ namespace SudoFont
 		static readonly string ConfigFileKey_BottomColorG = "BtmG";
 		static readonly string ConfigFileKey_BottomColorB = "BtmB";
 		static readonly string ConfigFileKey_FontSystem = "FontSystem";
-		
+
 		static readonly string ConfigFileKey_AtomicPixels = "AtomicPixels";
 
 		static readonly string ConfigFileKey_CharacterSet = "CharacterSet";
@@ -1742,7 +1742,7 @@ namespace SudoFont
 
 		// This is drawn into the preview window.
 		Bitmap _fontPreviewBitmap;
-		
+
 		// This form hangs off the side. It can be used to overlay the exact result you'd get at runtime on top of Photoshop or your app.
 		PerPixelAlphaForm _alphaPreviewForm;
 		bool _updatingAlphaPreviewWindow = false;

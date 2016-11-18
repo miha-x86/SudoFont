@@ -1,4 +1,4 @@
-﻿namespace SudoFont
+namespace SudoFont
 {
 	partial class MainForm
 	{
