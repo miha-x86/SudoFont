@@ -310,7 +310,8 @@ namespace SudoFont
 						c.YOffset = extents.Y;
 						c.PackedWidth = extents.Width;
 						c.PackedHeight = extents.Height;
-
+						// MessageBox.Show("x:" + c.XOffset + " y:"+ c.YOffset +" w:" + c.PackedWidth+"h:" + c.PackedHeight);
+						// MessageBox.Show("");
 						// Clear out the previous space used by it.
 						g.FillRectangle( blackBrush, new Rectangle( 0, 0, extents.X + extents.Width + 20, extents.Y + extents.Height + 20 ) );
 					}
@@ -1181,6 +1182,87 @@ namespace SudoFont
 			}
 		}
 
+		void WriteXrdpFontHeaderSection(BinaryWriter writer) {
+
+			// 4 bytes (Header identifier)
+			writer.Write("FNT1");
+
+			// 32 bytes (Font name)
+			writer.Write("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT");
+
+			// 2 bytes (Charset length)
+			writer.Write((short) _finalCharacterSet.Length);
+
+			// 2 bytes (Style)
+			writer.Write((short) 1);
+
+			// 8 bytes (Padding)
+			for (int i=0; i<8; i++)
+				writer.Write((byte) 0);
+
+		}
+
+		void WriteXrdpFontCharactersSection(BinaryWriter writer) {
+
+			for (int i = 0; i < _finalCharacterSet.Length; i++) {
+
+				CharacterInfo c = _finalCharacterSet[i];
+
+				// 2 bytes (Width)
+				writer.Write((short)c.PackedWidth);
+
+				// 2 bytes (Height)
+				writer.Write((short)c.PackedHeight);
+
+				// 2 bytes (Baseline)
+				writer.Write( (short)c.YOffset );
+
+				// 2 bytes (Offset)
+				writer.Write( (short)c.XOffset );
+
+				// 2 bytes (Incby)
+				writer.Write( (short)c.XAdvance );
+
+				// 6 bytes (Padding)
+				for (int p=0; p<6; p++)
+					writer.Write((byte) 0);
+
+				// Add the glyph data 1bpp data
+				ushort width = (c.PackedWidth + 7) & ~7; // The next multiple of 8
+				ushort height = c.PackedHeight;
+				byte[] glyph_data = Enumarable.Repeat((byte) 0, width * height + 16);
+				int glyph_data_index = 0;
+
+				for (int y = c.PackedHeight-1; y >= 0; y--) {
+
+					for (int x = 0; x < width; x++) {
+
+						Uint32 pixel = c.Image[y * width + x];
+						int red, green, blue;
+						red = (pixel >> 16) & 0xff;
+                        green = (pixel >> 8) & 0xff;
+                        blue = (pixel >> 0) & 0xff;
+
+						if (red == 255 && green == 255 && blue == 255)
+							glyph_data[glyph_data_index++] = '1';
+						else
+							glyph_data[glyph_data_index++] = '0';
+
+					}
+
+				}
+
+				ushort roller = 0;
+				byte glyph_row_part;
+
+				for (int j=0; j<glyph_data_index; j++) {
+
+				}
+
+
+			}
+
+		}
 
 		void WriteFontCharactersSection( BinaryWriter writer )
 		{
