@@ -1047,12 +1047,22 @@ namespace SudoFont
 				return;
 			}
 
-			// Save out the .sfn file.
 			using ( Stream outStream = File.Open( _prevFontFilename, FileMode.Create, FileAccess.Write ) )
 			{
 				using ( BinaryWriter writer = new BinaryWriter( outStream ) )
 				{
-					WriteFontFileDataToStream( writer, _packedImage.Width, _packedImage.Height );
+					if (_prevFontFilename.EndsWith(".sfn")) {
+
+						// Save out the .sfn file.
+						WriteFontFileDataToStream( writer, _packedImage.Width, _packedImage.Height );
+
+					}
+					if (_prevFontFilename.EndsWith(".fv1")) {
+
+						// Save out the .fv1 file.
+						WriteXrdpFontFileDataToStream(writer);
+
+					}
 				}
 			}
 
@@ -1084,6 +1094,13 @@ namespace SudoFont
 
 			// Useful for verifying the saving, loading, and rendering/spacing.
 			//SetTestBitmap( SudoFontTest.CreateBitmapFromString( _prevFontFilename, "This is a test string. !@#$%^&*", 0, 0, _currentFont, win32APITest: true ) );
+		}
+
+		void WriteXrdpFontFileDataToStream(BinaryWriter writer) {
+
+			WriteXrdpFontHeaderSection(writer);
+			WriteXrdpFontCharactersSection(writer);
+
 		}
 
 		void WriteFontFileDataToStream( BinaryWriter writer, int originalTextureWidth, int originalTextureHeight )
@@ -1185,80 +1202,181 @@ namespace SudoFont
 		void WriteXrdpFontHeaderSection(BinaryWriter writer) {
 
 			// 4 bytes (Header identifier)
-			writer.Write("FNT1");
+			writer.Write((byte)'F');
+			writer.Write((byte)'N');
+			writer.Write((byte)'T');
+			writer.Write((byte)'1');
 
 			// 32 bytes (Font name)
-			writer.Write("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT");
+			String fontFamily = CurrentSelectedFontFamilyName;
+			int i;
+			for (i=0; i<fontFamily.Length && i < 32; i++)
+				writer.Write((byte)fontFamily[i]);
+			while ((32 - i++) > 0)
+				writer.Write((byte) 0);
 
-			// 2 bytes (Charset length)
-			writer.Write((short) _finalCharacterSet.Length);
+			// 2 bytes (Font Size)
+			writer.Write((short) CurrentComboBoxFontSize);
 
 			// 2 bytes (Style)
 			writer.Write((short) 1);
 
 			// 8 bytes (Padding)
-			for (int i=0; i<8; i++)
+			for (int j=0; j<8; j++)
 				writer.Write((byte) 0);
+
+		}
+
+		CharacterInfo FindCharacter(Char c) {
+
+			for (int i = 0; i < _finalCharacterSet.Length; i++) {
+				CharacterInfo cinfo = _finalCharacterSet[i];
+				if (cinfo.Character == c)
+					return cinfo;
+			}
+			return null;
 
 		}
 
 		void WriteXrdpFontCharactersSection(BinaryWriter writer) {
 
-			for (int i = 0; i < _finalCharacterSet.Length; i++) {
+			for (int i=32; i<0x4e00; i++) {
 
-				CharacterInfo c = _finalCharacterSet[i];
+				CharacterInfo c = FindCharacter((Char) i);
+
+				// Write blank glyph
+				if (c == null) {
+
+					// Width
+					writer.Write((short) 1);
+
+					// Height
+					writer.Write((short) 1);
+
+					// Baseline
+					writer.Write((short) 1);
+
+					// Offset
+					writer.Write((short) 1);
+
+					// Incby
+					writer.Write((short) 1);
+
+					// Padding
+					for (int j=0; j<6; j++)
+						writer.Write((byte) 0);
+
+					// Blank bitmap
+					for (int j=0; j<4; j++)
+						writer.Write((byte) 0);
+
+					continue;
+
+				}
 
 				// 2 bytes (Width)
-				writer.Write((short)c.PackedWidth);
+				writer.Write((short) c.PackedWidth);
 
 				// 2 bytes (Height)
-				writer.Write((short)c.PackedHeight);
+				writer.Write((short) c.PackedHeight);
 
 				// 2 bytes (Baseline)
-				writer.Write( (short)c.YOffset );
+				writer.Write((short) -c.PackedHeight);
 
 				// 2 bytes (Offset)
-				writer.Write( (short)c.XOffset );
+				writer.Write((short) c.XOffset);
 
 				// 2 bytes (Incby)
-				writer.Write( (short)c.XAdvance );
+				writer.Write((short) c.XAdvance);
 
 				// 6 bytes (Padding)
 				for (int p=0; p<6; p++)
 					writer.Write((byte) 0);
 
 				// Add the glyph data 1bpp data
-				ushort width = (c.PackedWidth + 7) & ~7; // The next multiple of 8
-				ushort height = c.PackedHeight;
-				byte[] glyph_data = Enumarable.Repeat((byte) 0, width * height + 16);
+				ushort _width = (ushort) ((c.PackedWidth + 7) & ~7); // The next multiple of 8
+				ushort width = (ushort) c.PackedWidth;
+				ushort height = (ushort) c.PackedHeight;
+				byte[] glyph_data = Enumerable.Repeat((byte) 0, _width * height + 16).ToArray();
 				int glyph_data_index = 0;
 
-				for (int y = c.PackedHeight-1; y >= 0; y--) {
+				for (int j=0; j<c.YOffset; j++) {
+					glyph_data[j + 0] = 0;
+					glyph_data[j + 1] = 0;
+					glyph_data[j + 2] = 0;
+					glyph_data[j + 3] = 0;
+					glyph_data[j + 4] = 0;
+					glyph_data[j + 5] = 0;
+					glyph_data[j + 6] = 0;
+					glyph_data[j + 7] = 0;
+				}
 
-					for (int x = 0; x < width; x++) {
+				for (int y=0; y<height; y++) {
 
-						Uint32 pixel = c.Image[y * width + x];
-						int red, green, blue;
+					int x;
+					for (x=0; x<width; x++) {
+
+						UInt32 pixel = c.Image[y * width + x];
+						uint red, green, blue;
 						red = (pixel >> 16) & 0xff;
-                        green = (pixel >> 8) & 0xff;
-                        blue = (pixel >> 0) & 0xff;
+						green = (pixel >> 8) & 0xff;
+						blue = (pixel >> 0) & 0xff;
 
-						if (red == 255 && green == 255 && blue == 255)
-							glyph_data[glyph_data_index++] = '1';
+						if (red != 0 || green != 0 || blue != 0)
+							glyph_data[glyph_data_index++] = 1;
 						else
-							glyph_data[glyph_data_index++] = '0';
+							glyph_data[glyph_data_index++] = 0;
 
 					}
+
+					// Pad the scanline with zeros
+					if (x < _width)
+						glyph_data_index += _width - x;
 
 				}
 
 				ushort roller = 0;
-				byte glyph_row_part;
+				byte b = 0;
+				int bytes_written = 0;
+
+				String the_message = "";
+				the_message += "_width: " + _width;
+				the_message += "width: " + width;
+				the_message += "height: " + height;
+				the_message += "index: " + glyph_data_index;
+				the_message += "baseline: " + c.YOffset;
+				the_message += "offset: " + c.XOffset;
+				the_message += "char: '" + c.Character + "'";
+				the_message += "incby: " + c.XAdvance;
+				the_message += "check: " + (((height * ((width + 7) / 8)) + 3) & ~3);
+				the_message += "\r\n";
 
 				for (int j=0; j<glyph_data_index; j++) {
+					if ((j % (_width)) == 0)
+						the_message += "\r\n";
 
+					if (glyph_data[j] == 1) {
+						b |= (byte)(0x80 >> (roller & 7));
+						the_message += "1";
+					}
+					else {
+						the_message += "0";
+					}
+
+					roller++;
+					if ((roller & 7) == 0) {
+						writer.Write((byte) b);
+						b = 0;
+						bytes_written++;
+					}
 				}
 
+				// if (c.Character == 'g')
+				// 	MessageBox.Show(">>>>>>" + the_message);
+
+				// Write padding
+				while ((bytes_written++ & 3) != 0)
+					writer.Write((byte) 0);
 
 			}
 
@@ -1365,7 +1483,7 @@ namespace SudoFont
 			// Find out how they want to save the font file.
 			SaveFileDialog dlg = new SaveFileDialog();
 			dlg.InitialDirectory = Environment.CurrentDirectory;
-			dlg.Filter = "Font Files (*.sfn)|*.sfn|All Files (*.*)|*.*";
+			dlg.Filter = "Font Files (*.sfn)|*.sfn|XRDP Font Files (*.fv1)|*.fv1";
 			dlg.FilterIndex = 0;
 			dlg.FileName = defaultName;
 			dlg.InitialDirectory = _dialogsInitialDirectory;
