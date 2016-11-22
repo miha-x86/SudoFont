@@ -1240,6 +1240,10 @@ namespace SudoFont
 
 		void WriteXrdpFontCharactersSection(BinaryWriter writer) {
 
+			Graphics g = this.CreateGraphics();
+			FontStyle style = GetFontStyleForFamily( _currentFont.FontFamily );
+			ushort baseline = (ushort)_currentFont.GetBaselinePos( g, style );
+
 			for (int i=32; i<0x4e00; i++) {
 
 				CharacterInfo c = FindCharacter((Char) i);
@@ -1275,13 +1279,29 @@ namespace SudoFont
 				}
 
 				// 2 bytes (Width)
-				writer.Write((short) c.PackedWidth);
+				ushort width = (ushort) c.PackedWidth; // Width of the glyph image data buffer
+				ushort _width = (ushort) ((c.PackedWidth + 7) & ~7); // Width of the glyph bitmap
+				writer.Write((short) width);
 
 				// 2 bytes (Height)
-				writer.Write((short) c.PackedHeight);
+				ushort height = (ushort) c.PackedHeight; // Height of the Glyph image data buffer
+				ushort _height = (ushort) (c.PackedHeight + c.YOffset); // Height of the glyph bitmap before padding
+				ushort extra_padding = 0;
+
+				if (_height < baseline) {
+					extra_padding = (ushort) (baseline - _height);
+					_height += extra_padding;
+				}
+				if (width > 0)
+					writer.Write((short) _height);
+				else
+					writer.Write((short) 0);
 
 				// 2 bytes (Baseline)
-				writer.Write((short) -c.PackedHeight);
+				if (width > 0)
+					writer.Write((short) -baseline);
+				else
+					writer.Write((short) 0);
 
 				// 2 bytes (Offset)
 				writer.Write((short) c.XOffset);
@@ -1294,23 +1314,15 @@ namespace SudoFont
 					writer.Write((byte) 0);
 
 				// Add the glyph data 1bpp data
-				ushort _width = (ushort) ((c.PackedWidth + 7) & ~7); // The next multiple of 8
-				ushort width = (ushort) c.PackedWidth;
-				ushort height = (ushort) c.PackedHeight;
-				byte[] glyph_data = Enumerable.Repeat((byte) 0, _width * height + 16).ToArray();
+				byte[] glyph_data = Enumerable.Repeat((byte) 0, _width * _height + 16).ToArray();
 				int glyph_data_index = 0;
 
-				for (int j=0; j<c.YOffset; j++) {
-					glyph_data[j + 0] = 0;
-					glyph_data[j + 1] = 0;
-					glyph_data[j + 2] = 0;
-					glyph_data[j + 3] = 0;
-					glyph_data[j + 4] = 0;
-					glyph_data[j + 5] = 0;
-					glyph_data[j + 6] = 0;
-					glyph_data[j + 7] = 0;
-				}
+				// Pad the beggining simulating YOffset
+				for (int j=0; j<c.YOffset; j++)
+					for (int k = 0; k < _width; k++)
+						glyph_data[glyph_data_index++] = 0;
 
+				// The actual glyph data
 				for (int y=0; y<height; y++) {
 
 					int x;
@@ -1318,6 +1330,7 @@ namespace SudoFont
 
 						UInt32 pixel = c.Image[y * width + x];
 						uint red, green, blue;
+
 						red = (pixel >> 16) & 0xff;
 						green = (pixel >> 8) & 0xff;
 						blue = (pixel >> 0) & 0xff;
@@ -1335,33 +1348,19 @@ namespace SudoFont
 
 				}
 
+				// Extra padding needed for simulating YOffset
+				for (int j=0; j<extra_padding; j++)
+					for (int k=0; k<_width; k++)
+						glyph_data[glyph_data_index++] = 0;
+
 				ushort roller = 0;
 				byte b = 0;
 				int bytes_written = 0;
 
-				String the_message = "";
-				the_message += "_width: " + _width;
-				the_message += "width: " + width;
-				the_message += "height: " + height;
-				the_message += "index: " + glyph_data_index;
-				the_message += "baseline: " + c.YOffset;
-				the_message += "offset: " + c.XOffset;
-				the_message += "char: '" + c.Character + "'";
-				the_message += "incby: " + c.XAdvance;
-				the_message += "check: " + (((height * ((width + 7) / 8)) + 3) & ~3);
-				the_message += "\r\n";
-
 				for (int j=0; j<glyph_data_index; j++) {
-					if ((j % (_width)) == 0)
-						the_message += "\r\n";
 
-					if (glyph_data[j] == 1) {
+					if (glyph_data[j] == 1)
 						b |= (byte)(0x80 >> (roller & 7));
-						the_message += "1";
-					}
-					else {
-						the_message += "0";
-					}
 
 					roller++;
 					if ((roller & 7) == 0) {
@@ -1371,7 +1370,7 @@ namespace SudoFont
 					}
 				}
 
-				// if (c.Character == 'g')
+				// if (c.Character == '0')
 				// 	MessageBox.Show(">>>>>>" + the_message);
 
 				// Write padding
@@ -1924,8 +1923,8 @@ namespace SudoFont
 		static readonly string ConfigFileKey_HandleSpecialSuffix = "HandleSpecialSuffix";
 
 		string _prevFontFilename = null;
-
-		string _defaultCharacterSet = "0123456789 _*+- ()[]#@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!%?.,;':\"";
+		string _defaultCharacterSet = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ";
+		// string _defaultCharacterSet = "0123456789 _*+- ()[]#@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!%?.,;':\"";
 
 		string _currentPreviewText = "Preview text built with RuntimeFont...";
 
