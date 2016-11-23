@@ -310,8 +310,6 @@ namespace SudoFont
 						c.YOffset = extents.Y;
 						c.PackedWidth = extents.Width;
 						c.PackedHeight = extents.Height;
-						// MessageBox.Show("x:" + c.XOffset + " y:"+ c.YOffset +" w:" + c.PackedWidth+"h:" + c.PackedHeight);
-						// MessageBox.Show("");
 						// Clear out the previous space used by it.
 						g.FillRectangle( blackBrush, new Rectangle( 0, 0, extents.X + extents.Width + 20, extents.Y + extents.Height + 20 ) );
 					}
@@ -1216,7 +1214,7 @@ namespace SudoFont
 				writer.Write((byte) 0);
 
 			// 2 bytes (Font Size)
-			writer.Write((short) CurrentComboBoxFontSize);
+			writer.Write((short) _currentFont.GetHeightInPixels(this));
 
 			// 2 bytes (Style)
 			writer.Write((short) 1);
@@ -1240,17 +1238,17 @@ namespace SudoFont
 
 		void WriteXrdpFontCharactersSection(BinaryWriter writer) {
 
-			Graphics g = this.CreateGraphics();
-			FontStyle style = GetFontStyleForFamily( _currentFont.FontFamily );
-			ushort baseline = (ushort)_currentFont.GetBaselinePos( g, style );
+			ushort __height = (ushort)_currentFont.GetHeightInPixels(this); // Font size in pixels
 
 			for (int i=32; i<0x4e00; i++) {
 
 				CharacterInfo c = FindCharacter((Char) i);
 
-				// Write blank glyph
-				if (c == null) {
+				// =============================================================
+				// Write glyph information
 
+				if (c == null) {
+					// Draw a blank glyph since this character wasn't mapped
 					// Width
 					writer.Write((short) 1);
 
@@ -1279,27 +1277,17 @@ namespace SudoFont
 				}
 
 				// 2 bytes (Width)
-				ushort width = (ushort) c.PackedWidth; // Width of the glyph image data buffer
-				ushort _width = (ushort) ((c.PackedWidth + 7) & ~7); // Width of the glyph bitmap
-				writer.Write((short) width);
+				writer.Write((short) c.PackedWidth);
 
 				// 2 bytes (Height)
-				ushort height = (ushort) c.PackedHeight; // Height of the Glyph image data buffer
-				ushort _height = (ushort) (c.PackedHeight + c.YOffset); // Height of the glyph bitmap before padding
-				ushort extra_padding = 0;
-
-				if (_height < baseline) {
-					extra_padding = (ushort) (baseline - _height);
-					_height += extra_padding;
-				}
-				if (width > 0)
-					writer.Write((short) _height);
+				if (c.PackedWidth > 0)
+					writer.Write((short) __height);
 				else
 					writer.Write((short) 0);
 
 				// 2 bytes (Baseline)
-				if (width > 0)
-					writer.Write((short) -baseline);
+				if (c.PackedWidth > 0)
+					writer.Write((short) -__height);
 				else
 					writer.Write((short) 0);
 
@@ -1313,29 +1301,31 @@ namespace SudoFont
 				for (int p=0; p<6; p++)
 					writer.Write((byte) 0);
 
-				// Add the glyph data 1bpp data
-				byte[] glyph_data = Enumerable.Repeat((byte) 0, _width * _height + 16).ToArray();
+				// =============================================================
+				// Add the Glyph
+				ushort __width = (ushort) ((c.PackedWidth + 7) & ~7); // Width of the glyph bitmap
+				byte[] glyph_data = Enumerable.Repeat((byte) 0, __width * __height + 16).ToArray();
 				int glyph_data_index = 0;
 
-				// Pad the beggining simulating YOffset
-				for (int j=0; j<c.YOffset; j++)
-					for (int k = 0; k < _width; k++)
+				// Pad the beggining simulating the YOffset
+				for (int j = 0; j < c.YOffset; j++)
+					for (int k = 0; k < __width; k++)
 						glyph_data[glyph_data_index++] = 0;
 
-				// The actual glyph data
-				for (int y=0; y<height; y++) {
+				// Add the glyph data
+				for (int y = 0; y < c.PackedHeight; y++) {
 
 					int x;
-					for (x=0; x<width; x++) {
+					for (x = 0; x < c.PackedWidth; x++) {
 
-						UInt32 pixel = c.Image[y * width + x];
+						UInt32 pixel = c.Image[y * c.PackedWidth + x];
 						uint red, green, blue;
 
 						red = (pixel >> 16) & 0xff;
 						green = (pixel >> 8) & 0xff;
 						blue = (pixel >> 0) & 0xff;
 
-						if (red != 0 || green != 0 || blue != 0)
+						if (red == 255 || green == 255 || blue == 255)
 							glyph_data[glyph_data_index++] = 1;
 						else
 							glyph_data[glyph_data_index++] = 0;
@@ -1343,16 +1333,18 @@ namespace SudoFont
 					}
 
 					// Pad the scanline with zeros
-					if (x < _width)
-						glyph_data_index += _width - x;
+					if (x < __width)
+						glyph_data_index += __width - x;
 
 				}
 
-				// Extra padding needed for simulating YOffset
-				for (int j=0; j<extra_padding; j++)
-					for (int k=0; k<_width; k++)
+				// Add the bottom of the bitmap
+				for (int j = (c.PackedHeight + c.YOffset); j < __height; j++)
+					for (int k = 0; k < __width; k++)
 						glyph_data[glyph_data_index++] = 0;
 
+				// =============================================================
+				// Write the bitmap to the Font file
 				ushort roller = 0;
 				byte b = 0;
 				int bytes_written = 0;
@@ -1368,10 +1360,8 @@ namespace SudoFont
 						b = 0;
 						bytes_written++;
 					}
-				}
 
-				// if (c.Character == '0')
-				// 	MessageBox.Show(">>>>>>" + the_message);
+				}
 
 				// Write padding
 				while ((bytes_written++ & 3) != 0)
@@ -1924,9 +1914,8 @@ namespace SudoFont
 
 		string _prevFontFilename = null;
 		string _defaultCharacterSet = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ";
-		// string _defaultCharacterSet = "0123456789 _*+- ()[]#@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!%?.,;':\"";
 
-		string _currentPreviewText = "Preview text built with RuntimeFont...";
+		string _currentPreviewText = "Preview txt sexta-feira 12:35 127.0.0.1";
 
 		FontStyleControl[] _fontStyleControls;
 		Bitmap _packedImage;
