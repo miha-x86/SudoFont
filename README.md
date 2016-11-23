@@ -23,6 +23,8 @@ Features:
 - Hover preview: Renders a preview of the current font to the side of the main window so 
   you can hover it over your software to see how it looks without exporting.
 
+- Can save the font for use in XRDP (https://github.com/neutrinolabs/xrdp).
+
 
 
 Map:
