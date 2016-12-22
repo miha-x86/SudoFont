@@ -1249,31 +1249,34 @@ namespace SudoFont
 
 				if (c == null) {
 					// Draw a blank glyph since this character wasn't mapped
-					// Width
 					writer.Write((short) 1);
-
-					// Height
 					writer.Write((short) 1);
-
-					// Baseline
 					writer.Write((short) 1);
-
-					// Offset
 					writer.Write((short) 1);
-
-					// Incby
 					writer.Write((short) 1);
-
-					// Padding
 					for (int j=0; j<6; j++)
 						writer.Write((byte) 0);
-
-					// Blank bitmap
 					for (int j=0; j<4; j++)
+						writer.Write((byte) 0);
+					continue;
+
+				}
+
+				// Write the glyph correctly, don't leave it without any data
+				// otherwise RDP clients may fail.
+				if (c.PackedWidth == 0 && c.PackedHeight == 0) {
+					writer.Write((short) 1);
+					writer.Write((short) __height);
+					writer.Write((short) -__height);
+					writer.Write((short) c.XOffset);
+					writer.Write((short) c.XAdvance);
+					for (int p=0; p<6; p++)
+						writer.Write((byte) 0);
+					// Blank bitmap
+					for (int j=0; j<((__height+3) & ~3); j++)
 						writer.Write((byte) 0);
 
 					continue;
-
 				}
 
 				// 2 bytes (Width)
